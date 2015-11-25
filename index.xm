@@ -9,6 +9,31 @@ module namespace graal = "http://www.humanitesnumeriques.fr";
 (:    )                                      :)
 (:just contact me at                         :)
 (: xavier-laurent.salvador at univ-paris13.fr:)
+(:
+
+Result for graal:scande('le héron est savant') is:
+
+
+<m>
+  <p>le</p>
+</m>
+<m>
+  <p>hé</p>
+  <p t="tonique">ron</p>
+</m>
+<m>
+  <p t="tonique">est</p>
+</m>
+<m>
+  <p>sa</p>
+  <compteDesVers>6</compteDesVers>
+  <p t="tonique">vant</p>
+</m>
+
+
+
+:)
+
 
 declare variable $graal:v_e := (
     "a","i","o","ô","ö","u","û","ü","é","è","ê","â","à","î","ï","ë","œ"
