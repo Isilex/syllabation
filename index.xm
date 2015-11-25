@@ -86,7 +86,6 @@ declare function graal:syllabus(
     $pe=$graal:v and $e=$graal:c and $en=$graal:c or $en=" "
   ) then $pe=$graal:v and $e=$graal:c and $en=$graal:c 
         else if (
-          (:C'est la partie pour temps/flanc:)
     $pe=$graal:c and $e=$graal:c and $en=$graal:c
   ) then $pe=$graal:c and $e=$graal:c and $en=$graal:c
         else if (
