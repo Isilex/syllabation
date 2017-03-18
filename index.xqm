@@ -14,22 +14,22 @@ module namespace local = "http://www.humanitesnumeriques.fr";
 Result for local:scande('le héron est savant') is:
 
 
-<m>
-  <p>le</p>
-</m>
-<m>
-  <p>hé</p>
-  <p t="tonique">ron</p>
-</m>
-<m>
-  <p t="tonique">est</p>
-</m>
-<m>
-  <p>sa</p>
-  <compteDesVers>6</compteDesVers>
-  <p t="tonique">vant</p>
-</m>
-
+<vers n="1" cpBrut="6" cpRese="6">
+  <mot n="1">
+    <syllabe rese="" n="1" class="" start="consonne">le</syllabe>
+  </mot>
+  <mot n="2">
+    <syllabe rese="" n="1" class="" liaison="l">hé</syllabe>
+    <syllabe rese="" n="2" class="tonique" silent="non">ron</syllabe>
+  </mot>
+  <mot n="3">
+    <syllabe rese="" n="1" class="" liaison="n">est</syllabe>
+  </mot>
+  <mot n="4">
+    <syllabe rese="" n="1" start="consonne">sa</syllabe>
+    <syllabe rese="" n="2" class="tonique" silent="non">vant</syllabe>
+  </mot>
+</vers>
 
 
 :)
