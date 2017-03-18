@@ -41,6 +41,7 @@ declare function local:syllabator(
 (:la fonction reçoit un mot et renvoie une analyse en syllabe avec la tonique:)   
 
 if (
+(:Si le mot n'a qu'une lettre, aucun problème d'analyse:)
     string-length(
       $motif
     ) > 1
@@ -55,6 +56,9 @@ if (
     $motif,"ueu","üeu"
   ) 
                   else $motif 
+                  
+     (:Le tableau des graphies vocaliques et consonnantiques:) 
+     
     let $v:= 
             if (
     matches(
