@@ -1,5 +1,6 @@
 xquery version "1.0" encoding "utf-8";
 module namespace local = "http://www.humanitesnumeriques.fr";
+
 (:Naive Approch for french syllabation.      :)
 (: By Xavier-Laurent SALVADOR on GitHub      :)
 (:-------------------------------------------:)
@@ -36,7 +37,7 @@ declare function local:syllabator(
   $motif
 ){
 (:la fonction reçoit un mot et renvoie une analyse en syllabe avec la tonique:)   
-(:"bryophyte", cryophysique, apothéose, omeyyade:)
+
 if (
     string-length(
       $motif
@@ -52,7 +53,9 @@ if (
     $motif,"ueu","üeu"
   ) 
                   else $motif 
-    let $v:= (:le y peut être consonne ou voyelle selon configuration du mot. Rarement les deux dans le même mot:) 
+    let $v:= 
+    (:le y peut être consonne ou voyelle selon configuration du mot. Rarement les deux dans le même mot:) 
+    (:Il faut donc tester en amont la nature des y du corpus:)
             if (
     matches(
       $motif,"[zrtpqsdfghjklmwxcvbn]y[zrtpqsdfghjklmwxcvbn]"
@@ -266,7 +269,7 @@ if (
   }</voyelle>
     
     let $syllabator :=
-    (:On remet ça en syllabe à la française. Restent les consonnes toutes seules à la fin:)
+    (:Il faut adapter ce découpage à une représentation française (graphique) de la syllabe:)
       for tumbling window $w in $decomp
         start $a when true()
         end $b at $m when (
@@ -297,7 +300,7 @@ if (
           }</syllabe>
     
     let $resultat :=
-    (:On pose les syllabes, remet les consonnes finales, les coupes:)
+    (:On aménage la représentation graphique des syllabes (coupe, double consonnes, finales):)
     for $syl at $ind in $syllabator
      return 
      if (
@@ -307,7 +310,7 @@ if (
       ) - 1
     )
   )
-       then (:On est obligé de faire ça pour les mots comme lueur:)
+       then (:->lu||eur:)
          if (
     string-length(
       $syl
@@ -364,7 +367,7 @@ if (
        else ()
      
     return
-    (:On calcule la tonique sur la base du e final:)
+    (:Calcul de la tonique:)
      (
        
      if (
@@ -879,16 +882,16 @@ return <unit>{
  )
 };
 
-let $source1 := (:file:read-text-lines(
-  '/Users/xavier/Documents/baudelaire.txt'
+(:Appel de la fonction:)
+
+let $source1 := file:read-text-lines(
+  'monDocument.txt'
 ) ! ft:normalize(
   .,map{
     "diacritics":"sensitive"
   }
-):)"néant"
-let $source := replace(
-  $source1,"(.)uis.je","$1uisje"
-) 
+)
+
 
 return local:analyzeVers(
   $source
