@@ -4,14 +4,14 @@ module namespace local = "http://www.humanitesnumeriques.fr";
 (:Naive Approch for french syllabation.      :)
 (: By Xavier-Laurent SALVADOR on GitHub      :)
 (:-------------------------------------------:)
-(:      can be called graal:scande(          :)
+(:      can be called local:scande(          :)
 (:  "coucou"                                 :)
 (:    )                                      :)
 (:just contact me at                         :)
 (: xavier-laurent.salvador at univ-paris13.fr:)
 (:
 
-Result for graal:scande('le héron est savant') is:
+Result for local:scande('le héron est savant') is:
 
 
 <m>
