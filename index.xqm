@@ -1,5 +1,5 @@
 xquery version "1.0" encoding "utf-8";
-module namespace graal = "http://www.humanitesnumeriques.fr";
+module namespace local = "http://www.humanitesnumeriques.fr";
 
 (:Naive Approch for french syllabation.      :)
 (: By Xavier-Laurent SALVADOR on GitHub      :)
@@ -34,846 +34,843 @@ Result for graal:scande('le héron est savant') is:
 
 :)
 
-
-declare variable $graal:v_e := (
-    "a","i","o","ô","ö","u","û","ü","é","è","ê","â","à","î","ï","ë","œ"
-  );
-  
-declare variable $graal:v := (
-  $graal:v_e,"e"
-);
-
-declare variable $graal:c:= (
-    "b","c","d","f","g","h","j","k","l","m","n","p","q","r","s","t","v","w","x","z","y"
-  );
-  
-declare variable $graal:consonnes_liées:= (
-    "c","b","t","g","d","p","k","v"
-  );
-  
-declare variable $graal:consonnes_liantes:= (
-    "h","r","l"
-  );
-
-declare function graal:contains-any-of (:FunctX:)
-  (
-   $arg as xs:string? ,
-    $searchStrings as xs:string* 
-)  as xs:boolean {
-   some $searchString in $searchStrings
-   satisfies contains(
-    $arg,$searchString
-  )
- } ;
-
-declare function graal:syllabus(
-  $mot
+declare function local:syllabator(
+  $motif
 ){
-     (
-      if (
-     $mot[1]=$graal:v
-   ) 
-   then
-   <r>{
-          $mot[1]
-     }</r>
-     else (),
-     for $i in
-  for tumbling window $w in $mot
-    start $s at $is when $s=$graal:c or $is>1
-    end $e previous $pe next $en when 
-        if (
-    $pe=$graal:v and $e=$graal:c and $en=$graal:c or $en=" "
-  ) then $pe=$graal:v and $e=$graal:c and $en=$graal:c 
-        else if (
-    $pe=$graal:c and $e=$graal:c and $en=$graal:c
-  ) then $pe=$graal:c and $e=$graal:c and $en=$graal:c
-        else if (
-    $pe=$graal:v and $e=$graal:v and $en=$graal:c
-  ) then $pe=$graal:v and $e=$graal:v and $en=$graal:c 
-        else if (
-    $pe=$graal:c and $e=$graal:v and $en=$graal:c
-  ) then $pe=$graal:c and $e=$graal:v and $en=$graal:c
-        else ()
-   return <p>{
-    $w
-  }</p>
-   return 
-   <r>{
-    replace(
-      $i," ",""
-    )
-  }</r>
-    )
-};
 
-declare function graal:beautify(
-  $resultat
-) {
-  for $x at $graal:vers in analyze-string(
-    replace(
-      string-join(
-        for $i in $resultat return <p>{
-          $i
-        }</p>
-      )," ",""
-    ),"[^\|]*\|"
-  ) return 
-    for $i in $x//fn:match
-      return <p>{
-    replace(
-      data(
-        $i
-      ),"\|",""
-    )
-  }</p>
-  };
+(:la fonction reçoit un mot et renvoie une analyse en syllabe avec la tonique:)   
 
-declare function graal:compte_syllabes(
-  $syllabator
-){
-  (:pour compter les syllabes, on va tester les e muets (
-    ie une syllabe qui se termine par un e muet et suivi d'une voyelle
-  ). On fait ensuite nb de syllabes - ce total.:)
-  for $graal:vr at $l in $syllabator
-              return 
-              <v ligne="{
-  $l
-}">{
-                count(
-    $graal:vr/mot/p
-  ) -
-                 sum(
-    for $m at $i in $graal:vr/mot return 
-                 (
-      if (
-        $m/p[last()][not(
-          ./@t
-        )] and graal:contains-any-of(
-            substring(
-            $graal:vr/mot[$i+1]/p[1],1,1
-          ),$graal:v
-          )
-      or $m/p[last()][not(
-            ./@t
-          )] and not(
-            $graal:vr/mot[$i+1]
-          )
-        ) then 1 else ())
-  )
-       }</v>
-};
-
-declare function graal:emuet(
-  $res
-){
-   if (
-  count(
-    $res//p
-  )<2
-  and graal:contains-any-of(
-      $res/p,$graal:v_e
-    )
-) then <mot><p t="tonique">{
-  data(
-    $res/p
-  )
-}</p></mot>
-  else if (
-  count(
-    $res//p
-  )<2
-  and not(
-        graal:contains-any-of(
-        $res/p,$graal:v
-      )
-    )
-) then <mot><p>{
-  data(
-    $res/p
-  )
-}</p></mot>
-  else 
-    for $p at $i in $res
-    let $last := count(
-  $p//p
-)
-    return
-    if (
-      (:Les cas où c'est l'avant-dernière la tonique:)
-  matches(
-    $p//p[position()=$last],"[^u]e[^srzxncm]","i"
-  ) and not(
-     graal:contains-any-of(
-        $p//p[position()=$last],$graal:v_e
-      )
-   )
-  or
-  matches(
-    $p//p[position()=$last],"e$","i"
-  ) and not(
-    graal:contains-any-of(
-        $p//p[position()=$last],$graal:v_e
-      )
-  ) 
-  or
-  matches(
-    $p//p[position()=$last],"[q|g]ue[s]?$","i"
-  ) 
-  (:problème de que et gue en fin de mot:) 
-) then 
-    <mot>{
-      for $syll at $j in $p//p
-      return
-      if (
-    $j=$last - 1
-  ) then 
-       <p t="tonique">{
-    data(
-      $syll
-    )
-  }</p> 
-      else $syll
-  }</mot>
-  else
-  <mot>{
-      for $syll at $j in $p//p
-      return
-      if (
-    $j=$last
-  ) then 
-        <p t="tonique">{
-    data(
-      $syll
-    )
-  }</p> 
-      else $syll
-  }</mot>  
-};
-
-
-declare function graal:scande(
-  $input as xs:string
-) {
-let $graal:vers := $input
-
-
-let $syllabator :=
-for $x in tokenize(
-  lower-case(
-    replace(
-      $graal:vers,"'",""
-    )
-  ),"\n"
-)
-return
-<vers>{
-  for $graal:cc at $p in tokenize(
-  $x,"\W+"
-)[not(
-  .=""
-)]               
-    return
-  
-  for $res in
-  <res>{
-  let $res := graal:syllabus(
-      tokenize(
-    replace(
-      $graal:cc,"(.)","$1;"
-    ),";"
-  )
-    )
-     
-  let $graal:cseule := 
-  for $x at $i in $res return 
-  if (
+if (
     string-length(
-      $x
-    )<2
-  ) then $i else ()
-  
-  let $resultat:=
-  for $x at $index in $res
-    let $graal:concat := if (
-    $index+1=$graal:cseule
-  ) then () else "|"
-    return
-     if (
-      $x=$graal:consonnes_liées and substring(
-        $res[$index+1],1,1
-      )= $graal:consonnes_liantes
-    ) then 
-     string-join(
-    $graal:concat||data(
-      $x
+      $motif
+    ) > 1
+  ) then
+    let $motif := if (
+    (
+      matches(
+        $motif,"[^gqo]ueu"
+      )
+    )
+  ) then replace(
+    $motif,"ueu","üeu"
+  ) 
+                  else $motif 
+    let $v:= 
+            if (
+    matches(
+      $motif,"[zrtpqsdfghjklmwxcvbn]y[zrtpqsdfghjklmwxcvbn]"
     )
   ) 
-    else 
-    string-join(
-    data(
-      $x
-    )||$graal:concat
+             then (
+    "à","a","i","o","ô","ö","u","û","ü","é","è","ê","â","à","î","ï","ë","œ" ,"e","y"
+  ) !  string-to-codepoints(.) 
+             else (
+    "a","i","o","ô","ö","u","û","ü","é","è","ê","â","à","î","ï","ë","œ" ,"e"
+  ) !  string-to-codepoints(.)
+    
+    let $c := if (
+    matches(
+      $motif,"[aeiouéè]y[aeiouéè]"
+    )
+  ) 
+              then (
+    "b","c","ç","d","f","g","h","j","k","l","m","n","p","q","r","s","t","v","w","x","z","y"
+  ) !  string-to-codepoints(.)
+              else (
+    "b","c","ç","d","f","g","h","j","k","l","m","n","p","q","r","s","t","v","w","x","z"
+  ) !  string-to-codepoints(.)
+
+    let $str := string-to-codepoints(
+    $motif
+  )  
+    
+    let $cons:=
+    (:index des groupes consonnantiques:)
+    for tumbling window $w in $str
+     start $a at $b when (
+    $a = $c and (
+      $str[$b + 1] = $c
+    )
   )
-  
-  return
-  
-   for $x in graal:beautify(
-        $resultat
+     end $f at $g when (
+    $f = $c and $g > $b and not(
+      $str[$g + 1] = $c
+    )
+  )
+      where every $q in (
+    for $x in (
+      $b to $g
+    ) return $str[$x]
+  ) satisfies $q = $c
+     return <p start="{
+    $b
+  }" end="{
+    $g
+  }" long="{
+    count(
+      $w
+    )
+  }">{
+    $w ! (
+      <i l="{
+        codepoints-to-string(.)
+      }">{.}</i>
+    )
+  }</p>
+     
+     let $voy:=
+     (:index des groupes vocaliques:)
+    for tumbling window $w in $str
+     start $a at $b when (
+    $a = $v and (
+      $str[$b + 1] = $v
+    )
+  )
+     end $f at $g when (
+    $f = $v and $g > $b and not(
+      $str[$g + 1] = $v
+    )
+  )
+      where every $q in (
+    for $x in (
+      $b to $g
+    ) return $str[$x]
+  ) satisfies $q = $v
+     return 
+       <p start="{
+    $b
+  }" end="{
+    $g
+  }" long="{
+    count(
+      $w
+    )
+  }">{
+    $w ! (
+      <i l="{
+        codepoints-to-string(.)
+      }">{.}</i>
+    )
+  }</p>
+     
+    
+    let $decomp :=
+    (:on crée une image consonne + voyelle en extrayant les nasales et les entraves:)
+     for $x at $offset in $str 
+      return 
+         if (
+    $cons[@start = $offset]
+  ) then 
+             if (
+    $offset > 1 
+                 and 
+                 not(
+      codepoints-to-string(
+        $cons[@start = $offset]/i[1]
+      ) = (
+        "x","n","m","s","r","l","f","c","t","p"
       )
+    )
+  ) 
+                  then
+                   <consonne>{
+    $cons[@start = $offset]/i
+  }</consonne>
+             else if (
+    $offset = 1 
+                      and codepoints-to-string(
+      $cons[@start = $offset]/i[1]
+    ) = (
+      "v","g","n","m","s","r","l","f","c","t","p","b"
+    )
+  ) 
+                  then 
+                   <consonne>{
+    $cons[@start = $offset]/i
+  }</consonne>
+             else if (
+    $offset > 1
+                      and  codepoints-to-string(
+      $cons[@start = $offset]/i[1]
+    ) = (
+      "c"
+    )
+                       and codepoints-to-string(
+      $cons[@start = $offset]/i[2]
+    ) = (
+      "h"
+    )
+  )
+                   then <consonne>{
+    $cons[@start = $offset]/i
+  }</consonne>
+             else (
+    <voyelle class="gloup">{
+      $cons[@start = $offset]/i[1]
+    }</voyelle>,<consonne>{
+      $cons[@start = $offset]/i[position()>1]
+    }</consonne>
+  )
+             
+         else if (
+    $voy[@start = $offset]
+  ) then
+                  if (
+    not(
+      $voy[@start = $offset]/i ! codepoints-to-string(.) = (
+        "ï","ö","ü","ë","ä","é","è"
+      )
+    )
+  ) then
+                    <voyelle>{
+    $voy[@start = $offset]/i
+  }</voyelle>
+                  else (
+    for $x in $voy[@start = $offset]/i return
+                     if (
+      codepoints-to-string(
+        $x
+      ) = (
+        "ï","ö","ü","ë","ä"(:,"é","è" PROBLEME lignée / royauté:) 
+      )
+    )
+                      then
+                         <voyelle class="trema">{
+      $voy[@start = $offset]/i[. = $x]
+    }</voyelle>
+                       else
+                         <voyelle>{
+      $voy[@start = $offset]/i[. = $x]
+    }</voyelle>
+  )
+         
+         else if (
+    (
+      $cons,$voy
+    )[i[position()>1] = $x and @start < $offset and @end >= $offset]
+  ) then () 
+         
+         else if (
+    $x = $c
+  ) then <consonne l="{
+    codepoints-to-string(
+      $x
+    )
+  }">{
+    $x
+  }</consonne>
+         
+         else <voyelle l="{
+    codepoints-to-string(
+      $x
+    )
+  }">{
+    $x
+  }</voyelle>
+    
+    let $syllabator :=
+
+      for tumbling window $w in $decomp
+        start $a when true()
+        end $b at $m when (
+    (
+      name(
+        $b
+      )="voyelle" and not(
+        name(
+          $decomp[$m + 1]
+        ) = "voyelle"
+      )
+    ) or (
+      $m = count(
+        $decomp
+      )
+    ) or (
+      $decomp[$m + 1]/@class="trema"
+    ) or (
+      $b/@class="trema"
+    )
+  )
+         return <syllabe>{
+          string-join(
+      for $s in $w//@l/data() return (
+        $s
+      )
+    )
+          }</syllabe>
+    
+    let $resultat :=
+
+    for $syl at $ind in $syllabator
      return 
      if (
-        matches(
-          $x,"[^aeiou]y$"
-        )
-      )
-      then (
-        element p {
-          replace(
-            $x,".y",""
-          )
-        },element p {
-          replace(
-            $x,"(
-              .*
-            )(
-              .y
-            )","$2"
-          )
-        }
-      )
-     else if (
-        matches(
-          $x,"pay[s]?"
-        )
-      )
-      then (
-        element p {
-          "pa"
-        },element p {
-          replace(
-            $x,"(
-              .*
-            )(
-              y[s]?
-            )","$2"
-          )
-        }
-      )
-     else if (
-        matches(
-          $x,"[aoéè][éè]"
-        )
-      )
-      then (
-        element p {
-          replace(
-            $x,"(
-              [^éè]*
-            )(
-              [éè].*
-            )","$1"
-          )
-        },element p {
-          replace(
-            $x,"(
-              [^éè]*
-            )(
-              [éè].*
-            )","$2"
-          )
-        }
-      )
-     else if (
-        matches(
-          $x,".*[éè][aeiou]"
-        )
-      )
-      then (
-        element p {
-          replace(
-            $x,"(
-              .*[éè]
-            )(
-              .*
-            )","$1"
-          )
-        },element p {
-          replace(
-            $x,"(
-              .*[éè]
-            )(
-              .*
-            )","$2"
-          )
-        }
-      )
-     else if (
-        matches(
-          $x,"ï"
-        )
-      )
-      then (
-        element p {
-          replace(
-            $x,"(
-              [^ï]*
-            )(
-              [ï].*
-            )","$1"
-          )
-        },element p {
-          replace(
-            $x,"(
-              [^ï]*
-            )(
-              [ï].*
-            )","$2"
-          )
-        }
-      )
-     else if (
-        matches(
-          $x,"ü"
-        )
-      )
-      then (
-        element p {
-          replace(
-            $x,"(
-              [^ü]*
-            )(
-              [ü].*
-            )","$1"
-          )
-        },element p {
-          replace(
-            $x,"(
-              [^ü]*
-            )(
-              [ü].*
-            )","$2"
-          )
-        }
-      )
-     else if (
-        matches(
-          $x,"xys"
-        )
-      )
-      then (
-        element p {
-          replace(
-            $x,"(
-              [^x]*
-            )(
-              [x].*
-            )","$1"
-          )
-        },element p {
-          replace(
-            $x,"(
-              [^x]*
-            )(
-              [x].*
-            )","$2"
-          )
-        }
-      )
-	 else if (
-        matches(
-          $x,"[^q]ue[unr]"
-        )
-      )
-      then (
-        element p {
-          replace(
-            $x,"(
-              .*u
-            )(
-              e.*
-            )","$1"
-          )
-        },element p {
-          replace(
-            $x,"(
-              .*u
-            )(
-              e.*
-            )","$2"
-          )
-        }
-      )
-      else $x
-    
-  }</res>
-
-return 
- graal:emuet(
-    $res
+    $ind < (
+      count(
+        $syllabator
+      ) - 1
+    )
   )
-}
-</vers>
-
-let $nb := count(
-  $syllabator
-)
- 
-let $type := graal:compte_syllabes(
-  $syllabator
-)
-
-let $dierese := for $x at $im in $syllabator return 
-                <vers>{
-    for $y in $x/mot return 
-                     <mot>{
-                       (
-        for $z in $y/p return 
-                       if (
-          not(
-            $type[./@ligne=$im]=12
-          ) and matches(
-            $z,"io"
-          ) or not(
-            $type[./@ligne=$im]=10
-          ) and matches(
-            $z,"io"
-          ) or matches(
-            $z,"io"
-          ) and not(
-            $type[./@ligne=$im]=8
-          )
-        )
-                       then 
-                       (
-          element p {
-            replace(
-              $z,"(
-                [^i]*i
-              )o.*","$1"
-            )
-          },
-                       element p {
-            $z/@*, replace(
-              $z,"[^i]*i(
-                o.*
-              )","$1"
-            )
-          }
-        )
-                       else $z
-                       )
-                     }</mot>
-  }
-                     </vers>
-      
-return
-
-  for $graal:ve at $i in $dierese 
-    let $echotype := for $typex in $type[./@ligne=$i] return if (
-      $typex=12
-    ) then "alexandrin" else if (
-      $typex=8
-    ) then "octosyllabe" else if(
-      $typex=10
-    ) then "décasyllabe" 
-    else if (
-    $typex=11 or $typex=13
+       then 
+         if (
+    string-length(
+      $syl
+    ) = 1 and string-length(
+      $syllabator[$ind + 1]
+    ) = 1
   )
-    then "alexandrin"
+            then (
+    <syllabe>{
+      concat(
+        $syl,$syllabator[$ind + 1]
+      )
+    }</syllabe>
+  )
+          else if (
+    string-length(
+      $syl
+    ) = 1 and string-length(
+      $syllabator[$ind - 1]
+    ) = 1 
+  )
+            then ()
+            else $syl        
        else if (
-    $typex=9
+    (
+      string-length(
+        $syllabator[last()]
+      ) = 1 or not(
+        matches(
+          $syllabator[last()],"[àaeuioéèôûî]"
+        )
+      )
+    ) and $ind < count(
+      $syllabator
+    )
   )
-    then "decasyllabe"  
-        else if (
-    $typex=7
+         then <syllabe>{
+    concat(
+      $syl,$syllabator[last()]
+    )
+  }</syllabe>
+       else if (
+    not(
+      string-length(
+        $syllabator[last()]
+      ) = 1
+    ) and matches(
+      $syllabator[last()],"[àaeuioéèôûî]"
+    )
+  ) 
+         then (
+    $syl
   )
-    then "octosyllabe"  
-    else "prose ?"||$typex
-  
+       else ()
+     
+    return
+    
+    (:On calcule la tonique sur la base du e final:)
+    
+     (
+       
+     if (
+      matches(
+        $resultat[last()],"[aeioué]{
+          0,2
+        }e[s]{
+          0,10
+        }$",'i'
+      )
+    )
+       then 
+         for $x at $ind in $resultat
+          return
+           if (
+      $ind = 1
+    ) then
+            if (
+      matches(
+        $x,"^[zrtpqsdfghjklmnwxcvb]"
+      )
+    ) then
+             <syllabe n="{
+      $ind
+    }" class="{
+      if (
+        count(
+          $resultat
+        ) = 2
+      ) then 'tonique' else ()
+    }" start="consonne">{
+      $x/data()
+    }</syllabe>
+            else 
+               <syllabe n="{
+      $ind
+    }" start="voyelle">{
+      $x/data()
+    }</syllabe>
+           else if (
+      $ind = count(
+        $resultat
+      ) -  1
+    )
+            then <syllabe n="{
+      $ind
+    }" class="tonique">{
+      $x/data()
+    }</syllabe>
+           else if (
+      $ind = count(
+        $resultat
+      )
+    ) 
+            then <syllabe n="{
+      $ind
+    }" class="feminine">{
+      $x/data()
+    }</syllabe>
+           else <syllabe n="{
+      $ind
+    }">{
+      $x/data()
+    }</syllabe>
+        else 
+         for $x at $ind in $resultat
+          return
+           if (
+      $ind = 1
+    ) then
+            if (
+      matches(
+        $x,"^[zrtpqsdfghjklmnwxcvb]"
+      )
+    ) then
+              <syllabe n="{
+      $ind
+    }" start="consonne">{
+      $x/data()
+    }</syllabe>
+            else 
+               <syllabe n="{
+      $ind
+    }" start="voyelle">{
+      $x/data()
+    }</syllabe>
+           else if (
+      $ind = count(
+        $resultat
+      )
+    )
+            then <syllabe n="{
+      $ind
+    }" class="tonique">{
+      $x/data()
+    }</syllabe>
+            else <syllabe n="{
+      $ind
+    }">{
+      $x/data()
+    }</syllabe> 
+          )
+    else  (:le cas de la lettre seule....:)
+     if (
+    matches(
+      $motif,"[zrtpqsdfghjklmwxcvbn]"
+    )
+  ) then 
+        <syllabe n="1" start="consonne">{
+    $motif
+  }</syllabe>
+     else if (
+    matches(
+      $motif,"[aeiouéèà]"
+    )
+  ) then  <syllabe n="1" start="voyelle">{
+    $motif
+  }</syllabe>
+     else ()     
+};
+
+declare function local:analyzeVers(
+  $source
+){
+let $scansion :=
+for $motif in $source 
+return <unit>{
+ let $m := tokenize(
+      $motif,"\W+"
+    )[not(
+      .=''
+    )]
+  return 
+  for $mm at $ind in $m return
+  (
+      <mot n="{
+        $ind
+      }">{
+        local:syllabator(
+          ft:normalize(
+            $mm,map{
+              "diacritics":"sensitive"
+            }
+          )
+        )
+      }</mot>
+    )
+  }</unit>
   
   return 
-      (
-     for $unit at $imot in
-     <corps>{
-      for $m at $i in $graal:ve/mot return
-      <m>{
-         
-          (
-            (:On va d'abord se demander s'il y a un e muet à mettre entre parenthèses:)
-        if (
-          $m/p[last()][not(
-            ./@t
-          )] and 
-          graal:contains-any-of(
-                substring(
-                  $graal:ve/mot[$i+1]/p[1],1,1
-                ),(:$graal:v,"h" Le H MUET !!!!:)$graal:v
-              )
-              
-           (:Le H muet !:)
-          or $m/p[last()][not(
-            ./@t
-          )] and matches(
-              data(
-                $graal:ve/mot[$i+1]
-              ),"^homm"
-            )
-          
-          or $m/p[last()][not(
-            ./@t
-          )] and matches(
-              data(
-                $graal:ve/mot[$i+1]
-              ),"^h[^aé]"
-            ) 
-          
-          or $m/p[last()][not(
-            ./@t
-          )] and matches(
-              data(
-                $graal:ve/mot[$i+1]
-              ),"^héc"
-            )
-          
-          or $m/p[last()][not(
-            ./@t
-          )] and not(
-              $graal:ve/mot[$i+1]
-            )
-        ) 
-            then for $p at $ix in $m/p return 
-                if (
-            $ix = count(
-              $m/p
-            )
-          ) then 
-          if (
-            substring(
-              $p,string-length(
-                $p
-              ),1
-            ) = $graal:c and 
-            graal:contains-any-of(
-                substring(
-                  $graal:ve/mot[$i+1]/p[1],1,1
-                ),(
-                $graal:v
-              )
-              )
-          )
-          (:liaison consonnantique:)
-          then          
-          (
-            <p t="emuette" liaison="{
-              (
-                substring(
-                  $p,string-length(
-                    $p
-                  ),1
+  (
+  (:Reste à savoir si les finales se prononcent:)
+  (:Donc on teste chaque syllabe:)
+  
+  for $vers in (
+  for $u at $nomb in $scansion
+   return <unit n="{
+        $nomb
+      }">
+   {
+     for $mot at $ind in $u/mot[not(
+          .=''
+        )]
+     return 
+     for $mot in (
+     <mot n="{
+            $ind
+          }">{
+      if (
+        (
+                $mot/syllabe[last()]/@class="feminine" and not(
+                  matches(
+                    $mot/syllabe[last()],'ée$'
+                  )
+                ) and not(
+                  matches(
+                    $mot/syllabe[last()],'s$'
+                  )
+                ) and $u/mot[$ind + 1]/syllabe[1]/@start="voyelle"
+              ) 
+        or (
+                $mot/syllabe[last()]/@class="feminine" and matches(
+                  $u/mot[$ind + 1]/syllabe[1],'^h'
+                )
+              ) 
+        or (
+                $mot/syllabe[last()]/@class="feminine" and not(
+                  matches(
+                    $mot/syllabe[last()],'[^q][ioaéu]e$'
+                  )
+                ) and $ind = count(
+                  $u/mot
+                )
+              ) 
+        and (
+                not(
+                  matches(
+                    $mot/syllabe[last()],'[éè]'
+                  )
                 )
               )
-            }">{
-          replace(
-            $p,"e","(e)"   
-          )
-        }</p>
-          ) 
-        else <p t="emuette" liaison="{
-              (
-                substring-before(
-                  $p,'e'                  
-                )
-              )
-            }">{
-          (:pas de liaison consonnantique:)
-          replace(
-            $p,"e","(e)"
-          )
-        }</p>
-        
-         else $p
-         
-        else for $p at $ix in $m/p 
-          return 
+            )
+       then (:e muet:) 
+         for $s at $i in $mot/syllabe return 
            if (
-          $ix=$m/p/last() and substring(
-              $p,string-length(
-                $p
-              ),1
-            ) = $graal:c and graal:contains-any-of(
-                substring(
-                  $graal:ve/mot[$i+1]/p[1],1,1
-                ),$graal:v
+              $i = count(
+                $mot/syllabe
               )
-          )
-           then          
-          
-           element {
-             node-name(
-                $p
-              )
-               }             
-            {
-              attribute liaison {
-            (
-              substring(
-                $p,string-length(
-                  $p
-                ),1
-              )
-            )
-              },
-         $p/@*,
-            data(
-              $p
-            )
-      }
-        
-          else $p
-      )  
-      }</m>
-    }</corps>
-      return        
-          for $x at $imot in $unit/m     
-          return
-          if (
-        $unit/m[$imot - 1]//@liaison
-      )
-          then 
-          <m>{
-            (
-        $x/@*,<l>{
-				if (
-            $unit/m[$imot - 1]//@liaison="d" and matches(
-              $unit/m[$imot - 1]//p[last()],"d$","i"
-            )
-          )  
-				 then "t" 
-				else if (
-            $unit/m[$imot - 1]//@liaison="s"
-          )
-				 then "z" 
-				else if (
-            $unit/m[$imot - 1]//@liaison="v" and matches(
-              $unit/m[$imot - 1]//p[last()],"v$","i"
-            )
-          )
-				 then "f"
-				else if (
-            $unit/m[$imot - 1]//@liaison="b" and matches(
-              $unit/m[$imot - 1]//p[last()],"b$","i"
-            )
-          )
-				 then "p"
-				else if (
-            $unit/m[$imot - 1]//@liaison="g" and matches(
-              $unit/m[$imot - 1]//p[last()],"g$","i"
-            )
-          )
-				 then "k"  
-				else 
-				 data(
-            $unit/m[$imot - 1]//@liaison
-          )
-				}</l>,
-            for $p at $graal:cp in $x/p 
-            let $numsyll := count(
-          for $w in (
-            1 to $imot - 1
-          ) return (
-            $unit/m[$w]/p
-          )
-        )+ $graal:cp 
-            return (
-              if(
-            $echotype="alexandrin" and $numsyll<7 and $numsyll>5
-          ) 
-				then 
-				(
-            $p,<cut>|</cut>
-          ) 
-				else if (
-            not(
-              $unit/m[$imot]/p[$graal:cp+1]
-            ) and not(
-              $unit/m[$imot + 1]
             ) 
-          ) then (
-            <compteDesVers>{
-              if (
-                $numsyll - count(
-                  $unit//p[@t="emuet"]
-                )=12 or $numsyll - count(
-                  $unit//p[@t="emuet"]
-                )=13
-              )  then "alexandrin" else if (
-                $numsyll - count(
-                  $unit//p[@t="emuet"]
-                )=8
-              ) then "octosyllabe" else if (
-                $numsyll - count(
-                  $unit//p[@t="emuet"]
-                )=10
-              ) then "décasyllabe" else $numsyll - count(
-                $unit//p[@t="emuet"]
+             then <syllabe n="{
+              $s/@n
+            }" class="{
+              $s/@class
+            }" silent="oui">{
+              $s/data()
+            }</syllabe>
+           else if (
+              $i = 1
+            )(:la liaison:)
+             then 
+               if (
+              matches(
+                $s/data(),"^[aeiouéèâh]"
+              ) and (
+                matches(
+                  $u/mot[$ind - 1]/syllabe[last()]/data(),'[^e]*[zrtpqsdfghjklmwxcvbn]$'
+                ) or matches(
+                  $u/mot[$ind - 1]/syllabe[last()]/data(),'.*[zrtpqsdfghjklmwxcvbn]{
+                    1,4
+                  }e[zrtpqsdfghjklmwxcvbn]{
+                    0,4
+                  }$'
+                ) or  matches(
+                  $u/mot[$ind - 1]/syllabe[last()]/data(),'.*qu.*$'
+                )
               )
-            }</compteDesVers>,$p
-          ) 
-				else 
-					$p
-        )
-      )				
-          }</m>
-          else  
-          <m>{
-          for $p at $graal:cp in $x/p 
-          let $numsyll := count(
-        for $w in (
-          1 to $imot - 1
-        ) return (
-          $unit/m[$w]/p
-        )
-      )+ $graal:cp
-          return 
-           if(
-        $echotype="alexandrin" and $numsyll<7 and $numsyll>5
-      ) 
-            then 
-				(
-        $p,<cut>|</cut>
-      )
-			else if (
-        not(
-          $unit/m[$imot]/p[$graal:cp+1]
-        ) and not(
-          $unit/m[$imot + 1]
-        ) 
-      ) then (
-        <compteDesVers>{
-          if (
-            $numsyll - count(
-              $unit//p[@t="emuet"]
-            )=12 or $numsyll - count(
-              $unit//p[@t="emuet"]
-            )=13
-          ) then "alexandrin" else if (
-            $numsyll - count(
-              $unit//p[@t="emuet"]
-            )=8
-          ) then "octosyllabe" else if (
-            $numsyll - count(
-              $unit//p[@t="emuet"]
-            )=10
-          ) then "décasyllabe" else $numsyll - count(
-            $unit//p[@t="emuet"]
-          )
-        }</compteDesVers>,$p
-      ) 
-            else 
-				(
-        $p
-      )
-          }</m>
+            )
+                 then 
+                  if (
+              matches(
+                $u/mot[$ind - 1]/syllabe[last()]/data(),'[^e]*[zrtpqsdfghjklmwxcvbn]$'
+              )
+            )
+                   then
+                    <syllabe n="{
+              $s/@n
+            }" class="{
+              $s/@class
+            }" liaison="{
+              codepoints-to-string(
+                string-to-codepoints(
+                  $u/mot[$ind - 1]/syllabe[last()]/data())[last()]
+              )
+            }">{
+              $s/data()
+            }</syllabe>
+                   else if (
+              matches(
+                $u/mot[$ind - 1]/syllabe[last()]/data(),'.*[zrtpqsdfghjklmwxcvbn]{
+                  1,4
+                }e[zrtpqsdfghjklmwxcvbn]{
+                  0,4
+                }$'
+              )
+            ) then
+                    <syllabe n="{
+              $s/@n
+            }" class="{
+              $s/@class
+            }" liaison="{
+              replace(
+                $u/mot[$ind - 1]/syllabe[last()]/data(),'e',''
+              )
+            }">{
+              $s/data()
+            }</syllabe>
+                   else if (
+              matches(
+                $u/mot[$ind - 1]/syllabe[last()]/data(),'.*qu.*$'
+              )
+            ) then
+                    <syllabe n="{
+              $s/@n
+            }" class="{
+              $s/@class
+            }" liaison="k">{
+              $s/data()
+            }</syllabe>
+                   else
+                   <syllabe n="{
+              $s/@n
+            }" class="{
+              $s/@class
+            }" liaison="{
+              replace(
+                $u/mot[$ind - 1]/syllabe[last()]/data(),'.*e',''
+              )
+            }">{
+              $s/data()
+            }</syllabe>
+              else (
+              $s
+            )
+           else $s
+       else (:pas e muet:)
+         for $s at $i in $mot/syllabe return 
+           if (
+              $i = count(
+                $mot/syllabe
+              ) and $i > 1
+            ) 
+             then <syllabe n="{
+              $s/@n
+            }" class="{
+              $s/@class
+            }" silent="non">{
+              $s/data()
+            }</syllabe>
+            else if (
+              $i = 1
+            )(:la liaison:)
+             then 
+               if (
+              matches(
+                $s/data(),"^[aeiouéèâh]"
+              ) and (
+                matches(
+                  $u/mot[$ind - 1]/syllabe[last()]/data(),'[^e]*[zrtpqsdfghjklmwxcvbn]$'
+                ) or matches(
+                  $u/mot[$ind - 1]/syllabe[last()]/data(),'.*[zrtpqsdfghjklmwxcvbn]{
+                    1,4
+                  }e[zrtpqsdfghjklmwxcvbn]{
+                    0,4
+                  }$'
+                ) or  matches(
+                  $u/mot[$ind - 1]/syllabe[last()]/data(),'.*qu.*$'
+                )
+              )
+            )
+                 then 
+                  if (
+              matches(
+                $u/mot[$ind - 1]/syllabe[last()]/data(),'[^e]*[zrtpqsdfghjklmwxcvbn]$'
+              )
+            )
+                   then
+                    <syllabe n="{
+              $s/@n
+            }" class="{
+              $s/@class
+            }" liaison="{
+              codepoints-to-string(
+                string-to-codepoints(
+                  $u/mot[$ind - 1]/syllabe[last()]/data())[last()]
+              )
+            }">{
+              $s/data()
+            }</syllabe>
+                   else if (
+              matches(
+                $u/mot[$ind - 1]/syllabe[last()]/data(),'.*[zrtpqsdfghjklmwxcvbn]{
+                  1,4
+                }e[zrtpqsdfghjklmwxcvbn]{
+                  0,4
+                }$'
+              )
+            ) then
+                    <syllabe n="{
+              $s/@n
+            }" class="{
+              $s/@class
+            }" liaison="{
+              replace(
+                $u/mot[$ind - 1]/syllabe[last()]/data(),'e',''
+              )
+            }">{
+              $s/data()
+            }</syllabe>
+                   else if (
+              matches(
+                $u/mot[$ind - 1]/syllabe[last()]/data(),'.*qu.*$'
+              )
+            ) then
+                    <syllabe n="{
+              $s/@n
+            }" class="{
+              $s/@class
+            }" liaison="k">{
+              $s/data()
+            }</syllabe>
+                   else
+                   <syllabe n="{
+              $s/@n
+            }" class="{
+              $s/@class
+            }" liaison="{
+              replace(
+                $u/mot[$ind - 1]/syllabe[last()]/data(),'.*e',''
+              )
+            }">{
+              $s/data()
+            }</syllabe>
+                 else (
+              $s
+            )
+             else (
+              $s
+            )
+           }</mot>
+         )
+         return (:la diérèse ouaient / ion / ieur... Le lion tint conseil:)
+          <mot n="{
+          $mot/@n
+        }">{
+           for $s in $mot/syllabe
+              return <syllabe rese="{
+                if (
+              matches(
+                $s/text(),'[i][aeiouéè]'
+              ) or matches(
+                $s/text(),'ou[aeiouéè]'
+              ) or matches(
+                $s/text(),'[^q]u[aei]'
+              )
+            )
+                 then 1
+                else () 
+              }">{
+            $s/@*
+          }{
+                if (
+              matches(
+                $s/text(),'[zrtplmqsdfghkwxcvbn][i][aeiouéè][a-z]'
+              )
+            )
+                 then replace(
+              $s,'i','I'
+            )
+                else if (
+              matches(
+                $s/text(),'ou[aeiouéè]'
+              )
+            ) 
+                 then replace(
+              $s,'ou','OU'
+            )
+               else if (
+              matches(
+                $s/text(),'[^q]u[aei]'
+              )
+            )
+                 then replace(
+              $s,'u(
+                [aei]
+              )','U$1'
+            )
+                 else $s/text()
+              }</syllabe>
+          }</mot>
+   }
+   </unit>
     )
+   
+   return 
+   let $compteBrut := sum(
+      count(
+        $vers//syllabe
+      )
+    ) - (
+      count(
+        $vers//syllabe[string-length(.) = 1 and not(
+          matches(
+            .,'[aeioéèïöüàu]'
+          )
+        )]
+      ) + count(
+        $vers//syllabe[@silent='oui']
+      ) + count(
+        $vers//syllabe[. = 'qu']
+      )
+    )
+   let $t := (
+      $vers//syllabe[string-length(.) = 1 and not(
+        matches(
+          .,'[aeioéèïöüàu]'
+        )
+      )]
+    )
+   let $u :=  $vers//syllabe[@silent='oui']
+    let $v := $vers//syllabe[. = 'qu']
+   return 
+     <vers n="{
+      $vers/@n
+    }" cpBrut="{
+      $compteBrut
+    }" cpRese="{
+      $compteBrut + count(
+        $vers//syllabe[@rese="1"]
+      )
+    }">{
+       $vers/mot
+     }</vers>
+ )
 };
