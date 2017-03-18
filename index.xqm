@@ -58,6 +58,8 @@ if (
                   else $motif 
                   
      (:Le tableau des graphies vocaliques et consonnantiques:) 
+     (:Le y est un problème dans le mot où il peut être voyelle ou consonne:) 
+     (:Très rarement les deux à la fois:) 
      
     let $v:= 
             if (
@@ -235,11 +237,11 @@ if (
       codepoints-to-string(
         $x
       ) = (
-        "ï","ö","ü","ë","ä"(:,"é","è" PROBLEME lignée / royauté:) 
+        "ï","ö","ü","ë","ä"  (:Il faut faire quelques aménagements: "é","è" PROBLEME lignée / royauté:) 
       )
     )
                       then
-                         <voyelle class="trema">{
+                         <voyelle class="trema">{ (:la classe tréma comprend toutes les voyelle en hiatus:)
       $voy[@start = $offset]/i[. = $x]
     }</voyelle>
                        else
@@ -784,7 +786,7 @@ return <unit>{
             )
            }</mot>
          )
-         return (:la diérèse ouaient / ion / ieur... Le lion tint conseil:)
+         return (:la diérèse ouaient / ion / ieur... Le lI-on tint conseil:)
           <mot n="{
           $mot/@n
         }">{
