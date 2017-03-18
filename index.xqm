@@ -1,6 +1,5 @@
 xquery version "1.0" encoding "utf-8";
 module namespace local = "http://www.humanitesnumeriques.fr";
-
 (:Naive Approch for french syllabation.      :)
 (: By Xavier-Laurent SALVADOR on GitHub      :)
 (:-------------------------------------------:)
@@ -33,15 +32,12 @@ Result for local:scande('le héron est savant') is:
 
 
 :)
-
 declare function local:syllabator(
   $motif
 ){
-
 (:la fonction reçoit un mot et renvoie une analyse en syllabe avec la tonique:)   
-
+(:"bryophyte", cryophysique, apothéose, omeyyade:)
 if (
-(:Si le mot n'a qu'une lettre, aucun problème d'analyse:)
     string-length(
       $motif
     ) > 1
@@ -56,12 +52,7 @@ if (
     $motif,"ueu","üeu"
   ) 
                   else $motif 
-                  
-     (:Le tableau des graphies vocaliques et consonnantiques:) 
-     (:Le y est un problème dans le mot où il peut être voyelle ou consonne:) 
-     (:Très rarement les deux à la fois:) 
-     
-    let $v:= 
+    let $v:= (:le y peut être consonne ou voyelle selon configuration du mot. Rarement les deux dans le même mot:) 
             if (
     matches(
       $motif,"[zrtpqsdfghjklmwxcvbn]y[zrtpqsdfghjklmwxcvbn]"
@@ -237,11 +228,11 @@ if (
       codepoints-to-string(
         $x
       ) = (
-        "ï","ö","ü","ë","ä"  (:Il faut faire quelques aménagements: "é","è" PROBLEME lignée / royauté:) 
+        "ï","ö","ü","ë","ä"(:,"é","è" PROBLEME lignée / royauté:) 
       )
     )
                       then
-                         <voyelle class="trema">{ (:la classe tréma comprend toutes les voyelle en hiatus:)
+                         <voyelle class="trema">{
       $voy[@start = $offset]/i[. = $x]
     }</voyelle>
                        else
@@ -275,7 +266,7 @@ if (
   }</voyelle>
     
     let $syllabator :=
-
+    (:On remet ça en syllabe à la française. Restent les consonnes toutes seules à la fin:)
       for tumbling window $w in $decomp
         start $a when true()
         end $b at $m when (
@@ -306,7 +297,7 @@ if (
           }</syllabe>
     
     let $resultat :=
-
+    (:On pose les syllabes, remet les consonnes finales, les coupes:)
     for $syl at $ind in $syllabator
      return 
      if (
@@ -316,7 +307,7 @@ if (
       ) - 1
     )
   )
-       then 
+       then (:On est obligé de faire ça pour les mots comme lueur:)
          if (
     string-length(
       $syl
@@ -373,9 +364,7 @@ if (
        else ()
      
     return
-    
     (:On calcule la tonique sur la base du e final:)
-    
      (
        
      if (
@@ -529,7 +518,6 @@ return <unit>{
   (
   (:Reste à savoir si les finales se prononcent:)
   (:Donc on teste chaque syllabe:)
-  
   for $vers in (
   for $u at $nomb in $scansion
    return <unit n="{
@@ -786,7 +774,7 @@ return <unit>{
             )
            }</mot>
          )
-         return (:la diérèse ouaient / ion / ieur... Le lI-on tint conseil:)
+         return (:la diérèse ouaient / ion / ieur... Le lion tint conseil:)
           <mot n="{
           $mot/@n
         }">{
@@ -798,9 +786,11 @@ return <unit>{
               ) or matches(
                 $s/text(),'ou[aeiouéè]'
               ) or matches(
-                $s/text(),'[^q]u[aei]'
+                $s/text(),'[^q]u[éaei]'
+              ) or matches(
+                $s/text(),'éa'
               )
-            )
+            ) 
                  then 1
                 else () 
               }">{
@@ -822,15 +812,23 @@ return <unit>{
                  then replace(
               $s,'ou','OU'
             )
-               else if (
+                else if (
               matches(
-                $s/text(),'[^q]u[aei]'
+                $s/text(),'[^q]u[aéei]'
               )
             )
                  then replace(
               $s,'u(
-                [aei]
+                [aéei]
               )','U$1'
+            )
+                else if (
+              matches(
+                $s/text(),'éa'
+              )
+            )
+                  then replace(
+              $s,'éa','ÉA'
             )
                  else $s/text()
               }</syllabe>
@@ -880,3 +878,18 @@ return <unit>{
      }</vers>
  )
 };
+
+let $source1 := (:file:read-text-lines(
+  '/Users/xavier/Documents/baudelaire.txt'
+) ! ft:normalize(
+  .,map{
+    "diacritics":"sensitive"
+  }
+):)"néant"
+let $source := replace(
+  $source1,"(.)uis.je","$1uisje"
+) 
+
+return local:analyzeVers(
+  $source
+)
